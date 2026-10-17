@@ -1,0 +1,28 @@
+// For format details, see https://aka.ms/devcontainer.json.
+{
+	"name": "Pływackie wyprawy",
+	"image": "mcr.microsoft.com/devcontainers/base:alpine-3.22",
+
+	"features": {
+		"ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
+		"ghcr.io/guiyomh/features/just:0": {}
+	},
+
+	// Next.js dev server (`npm run dev`).
+	"forwardPorts": [3000],
+
+	// Persist Claude Code's login/credentials and global config across container rebuilds.
+	"mounts": [
+		"source=claude-code-config-${devcontainerId},target=/root/.claude,type=volume"
+	],
+
+	// Claude Code also stores account config in ~/.claude.json; keep it on the mounted volume too.
+	"containerEnv": {
+		"CLAUDE_CONFIG_DIR": "/root/.claude"
+	},
+
+	// icu-data-full: Alpine's Node ships English-only ICU; the app formats Polish numbers and dates.
+	"postCreateCommand": "apk add --no-cache nodejs npm icu-data-full && npm ci",
+
+	"remoteUser": "root"
+}
