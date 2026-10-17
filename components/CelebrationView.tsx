@@ -24,7 +24,8 @@ export default function CelebrationView({ c, onClose }: { c: Celebration; onClos
   );
 
   useEffect(() => {
-    ok.current?.focus();
+    // Focus for keyboards and screen readers, but keep the dialog scrolled to its title.
+    ok.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);

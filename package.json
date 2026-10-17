@@ -2,6 +2,12 @@
   "name": "fun-pool-workouts-dashboard",
   "version": "1.0.0",
   "private": true,
+  "description": "A playful family swim log for kids: log pool lengths, climb mountains, cross lakes, earn badges and travel around Poland together.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/novirael/fun-pool-workouts-dashboard.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
