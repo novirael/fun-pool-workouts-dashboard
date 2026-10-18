@@ -9,6 +9,8 @@ export type ApiErrorCode =
   | 'last_parent'
   | 'in_use'
   | 'too_many'
+  | 'not_earned'
+  | 'no_prizes'
   | 'validation'
   | 'bad_request'
   | 'server_error';

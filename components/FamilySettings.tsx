@@ -7,20 +7,22 @@ import { AVATARS } from '@/lib/domain/avatars';
 import { todayStr } from '@/lib/domain/dates';
 import { LIMITS, newMemberDraft, sortMembers, type MemberDraft } from '@/lib/domain/members';
 import { COLORS } from '@/lib/domain/palette';
-import type { Member } from '@/lib/domain/types';
+import type { Member, Prize } from '@/lib/domain/types';
 import { useI18n } from '@/lib/i18n/context';
 import { memberFields } from '@/lib/validation';
+import PrizeSettings from './PrizeSettings';
 import { errorText, toast } from './Toast';
 
 interface Props {
   members: Member[];
+  prizes?: Prize[];
   /** Absent during first-time setup, when nobody exists yet. */
   me?: Member;
   onBack?: () => void;
   onCreated?: (m: Member) => void;
 }
 
-export default function FamilySettings({ members, me, onBack, onCreated }: Props) {
+export default function FamilySettings({ members, prizes = [], me, onBack, onCreated }: Props) {
   const { t } = useI18n();
   const onboarding = members.length === 0;
   const [editing, setEditing] = useState<'new' | string | null>(onboarding ? 'new' : null);
@@ -126,6 +128,7 @@ export default function FamilySettings({ members, me, onBack, onCreated }: Props
               <ul className="mlist">{hidden.map(row)}</ul>
             </>
           )}
+          <PrizeSettings prizes={prizes} />
           <p style={{ marginTop: 24 }}>
             <button className="btn ghost" onClick={exportData}>
               ⬇️ {t.family.export}
@@ -157,7 +160,8 @@ function MemberForm({ existing, initial, id, lockParent, onDone }: FormProps) {
   const update = useUpdateMember();
   const [f, setF] = useState<Text<MemberDraft>>(() => ({
     ...initial,
-    defaultLengths: String(initial.defaultLengths),
+    defaultLengthsSmall: String(initial.defaultLengthsSmall),
+    defaultLengthsDeep: String(initial.defaultLengthsDeep),
     monthlyPaceM: String(initial.monthlyPaceM),
     recordGoalsM: initial.recordGoalsM.map(String),
   }));
@@ -174,7 +178,8 @@ function MemberForm({ existing, initial, id, lockParent, onDone }: FormProps) {
       swims: f.swims,
       color: f.color,
       avatar: f.avatar,
-      defaultLengths: Number(f.defaultLengths),
+      defaultLengthsSmall: Number(f.defaultLengthsSmall),
+      defaultLengthsDeep: Number(f.defaultLengthsDeep),
       monthlyPaceM: Number(f.monthlyPaceM),
       recordGoalsM: f.recordGoalsM.map(Number),
     });
@@ -264,11 +269,29 @@ function MemberForm({ existing, initial, id, lockParent, onDone }: FormProps) {
       </fieldset>
       {f.swims && (
         <>
-          <label className="field">
-            <span>{t.family.defaultLengths}</span>
-            <input className="input" type="number" inputMode="numeric" min={1} max={LIMITS.lengths} value={f.defaultLengths} onChange={(e) => set('defaultLengths', e.target.value)} aria-invalid={!!errors.defaultLengths} />
-            {err('defaultLengths')}
-          </label>
+          <fieldset className="field">
+            <legend>{t.family.startLengths}</legend>
+            <div className="pair">
+              {(['defaultLengthsSmall', 'defaultLengthsDeep'] as const).map((k) => (
+                <label key={k}>
+                  <span className="hint">{k === 'defaultLengthsSmall' ? t.family.startSmall : t.family.startDeep}</span>
+                  <input
+                    className="input"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={LIMITS.lengths}
+                    value={f[k]}
+                    onChange={(e) => set(k, e.target.value)}
+                    aria-invalid={!!errors[k]}
+                    aria-label={`${t.family.startLengths}: ${k === 'defaultLengthsSmall' ? t.family.startSmall : t.family.startDeep}`}
+                  />
+                </label>
+              ))}
+            </div>
+            <span className="hint">{t.family.startHint}</span>
+            {err('defaultLengthsSmall') || err('defaultLengthsDeep')}
+          </fieldset>
           <label className="field">
             <span>{t.family.pace}</span>
             <input className="input" type="number" inputMode="numeric" step={100} min={LIMITS.pace[0]} max={LIMITS.pace[1]} value={f.monthlyPaceM} onChange={(e) => set('monthlyPaceM', e.target.value)} aria-invalid={!!errors.monthlyPaceM} />

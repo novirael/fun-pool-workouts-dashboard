@@ -15,7 +15,7 @@ function factText({ t, L, fmtNum }: I18n, c: Comparison | null): string {
   return t.compare.times(c.times < 10 ? fmtNum(c.times) : String(c.times), c.item.dim, of, v);
 }
 
-export default function CelebrationView({ c, onClose }: { c: Celebration; onClose(): void }) {
+export default function CelebrationView({ c, hasPrizes, onClose }: { c: Celebration; hasPrizes: boolean; onClose(): void }) {
   const i18n = useI18n();
   const { t, L, dist, dl } = i18n;
   const ok = useRef<HTMLButtonElement>(null);
@@ -59,6 +59,7 @@ export default function CelebrationView({ c, onClose }: { c: Celebration; onClos
                   </div>
                 </div>
               ))}
+              {x.badges.length > 0 && hasPrizes && <p className="small">{t.cele.spinHint}</p>}
               {unlocked.length > 0 && (
                 <div className="un">
                   {unlocked.map((u, i) => (

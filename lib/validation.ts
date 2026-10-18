@@ -23,7 +23,8 @@ export const memberFields = z.object({
   swims: z.boolean(),
   color: z.enum(COLORS),
   avatar: z.enum(AVATARS),
-  defaultLengths: z.int().min(1).max(LIMITS.lengths),
+  defaultLengthsSmall: z.int().min(1).max(LIMITS.lengths),
+  defaultLengthsDeep: z.int().min(1).max(LIMITS.lengths),
   monthlyPaceM: z.int().min(LIMITS.pace[0]).max(LIMITS.pace[1]),
   recordGoalsM: z
     .array(z.int().min(LIMITS.record[0]).max(LIMITS.record[1]))
@@ -57,5 +58,12 @@ export const sessionsCreate = z.object({
 });
 
 export const awardPut = z.object({ givenOn: isoDate });
+
+export const prizeFields = z.object({
+  name: z.string().trim().min(1, 'name_required').max(LIMITS.prizeName),
+  weight: z.int().min(LIMITS.weight[0]).max(LIMITS.weight[1]),
+});
+export type PrizeInput = z.infer<typeof prizeFields>;
+export const prizePatch = prizeFields.partial().refine((p) => Object.keys(p).length > 0, { message: 'empty_patch' });
 
 export const passwordInput = z.object({ password: z.string().min(1).max(200) });

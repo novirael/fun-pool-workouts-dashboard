@@ -1,37 +1,38 @@
-# 🏊 Pływackie wyprawy · Swim Adventures
+# 🏊 Swim Adventures
 
 [![CI](https://github.com/novirael/fun-pool-workouts-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/novirael/fun-pool-workouts-dashboard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A family swim log for kids, built for the iPads they carry to the pool. After each training they log their lengths, and the meters add up to climbing Polish mountains, crossing lakes and earning badges. The whole family's meters also move everyone along a road trip around Poland.
 
-![Walkthrough: password, picking who's here, logging a training for two swimmers, the celebration, a profile, the family journey and the family settings](docs/demo.gif)
+![Walkthrough: password, picking who's here, logging a training for two swimmers, the celebration, a profile, spinning the wheel of fortune for a badge, the family journey and the family settings](docs/demo.gif)
 
-<sub>The walkthrough uses a made-up demo family. The UI picks Polish or English from the device language.</sub>
+<sub>The walkthrough uses a made-up demo family. The app is available in English and Polish and follows the device language.</sub>
 
 ## Features
 
-- **Quick logging.** Tap who swam, adjust lengths with −5/−1/+1/+5, pick the 15 m or 25 m pool, then save. Each device remembers who is using it and opens with that person's card already on.
+- **Quick logging.** Tap who swam, adjust lengths with −5/−1/+1/+5, pick the 15 m or 25 m pool, then save. Each device remembers who is using it and opens with that person's card already on. The counter starts from the swimmer's last training in the chosen pool, or from per-pool starting lengths a parent sets.
 - **A celebration after every save.** Each swimmer gets a fun fact ("That's 3.6 times the length of a football pitch!"), plus any new records, peaks reached, lakes crossed and badges earned.
 - **Personal progress:**
   - Mountains in three stages: our Polish favourites, then the [Crown of Polish Mountains](https://en.wikipedia.org/wiki/Crown_of_Polish_Mountains), then the Seven Summits.
   - Lakes from Morskie Oko to the English Channel.
   - Weekly streaks and personal records.
-- **25 badges**, spaced by each swimmer's own monthly goal so a 7-year-old and an adult both earn about one a month. A parent marks each badge as handed out once they give the real one.
+- **25 badges**, spaced by each swimmer's own monthly goal so a 7-year-old and an adult both earn about one a month.
+- **Wheel of fortune.** Each earned badge gets one spin of a prize wheel. Parents set up the prizes and their chances, the server draws the result so it can't be rerolled, and a parent marks the prize as handed out once it's given. If no prizes are set up yet, the kids are asked to get a parent to add some.
 - **The Great Journey.** Everyone's meters move the family along a 1,899 km trip: the Masurian lakes, the Bieszczady, the Tatras, the Giant Mountains, and back home. Every stage links to its route in Google Maps.
-- **Family settings in the app.** Add swimmers and non-swimmers, set roles (parent or kid), colors, animals and goals. Each entry shows who added it.
-- **Made for iPads.** Layouts for tablet and phone, light and dark mode, and it can be added to the home screen. Polish and English.
+- **Family settings in the app.** Add swimmers and non-swimmers, set roles (parent or kid), colors, animals, goals and starting lengths, and manage the prize list. Each entry shows who added it.
+- **Made for iPads.** Layouts for tablet and phone, light and dark mode, and it can be added to the home screen. English and Polish.
 - **No accounts.** One shared family password, remembered on each device.
 
 ## Screenshots
 
-| Training (Polish, iPad) | Family journey |
+| Training (iPad) | Wheel of fortune |
 | --- | --- |
-| ![Training screen in Polish](docs/screenshots/training-pl.png) | ![The family journey with the route and who contributed how much](docs/screenshots/journey-en.png) |
-| **Profile (dark mode, iPad portrait)** | **Family settings (parents only)** |
-| ![A swimmer's profile in dark mode](docs/screenshots/profile-dark-en.png) | ![Editing a family member](docs/screenshots/family-en.png) |
-
-<p align="center"><img src="docs/screenshots/profile-phone-pl.png" alt="Profile on a phone, in Polish" width="300"></p>
+| ![Training screen with one swimmer selected](docs/screenshots/training-en.png) | ![The prize wheel after a spin, showing the prize won](docs/screenshots/wheel-en.png) |
+| **Profile (dark mode, iPad portrait)** | **Family journey** |
+| ![A swimmer's profile in dark mode](docs/screenshots/profile-dark-en.png) | ![The family journey with the route and who contributed how much](docs/screenshots/journey-en.png) |
+| **Family settings (parents only)** | **Profile on a phone** |
+| ![Editing a family member next to the prize list](docs/screenshots/family-en.png) | <img src="docs/screenshots/profile-phone-en.png" alt="A swimmer's profile on a phone" width="300"> |
 
 ## How it works
 
@@ -88,6 +89,7 @@ Everything family-specific is entered in the app. The adventure content lives in
 | Road trip: start town, stops, stages | `lib/domain/route.ts` |
 | Mountains and lakes | `lib/domain/places.ts` |
 | Badges and how they're earned | `lib/domain/badges.ts` |
+| Wheel of fortune maths | `lib/domain/prizes.ts` |
 | Fun comparisons | `lib/domain/compare.ts` |
 | All texts (Polish and English) | `lib/i18n/pl.ts`, `lib/i18n/en.ts` |
 
@@ -102,7 +104,7 @@ This is a family app, and the protection is sized for that:
   - Devices store a token (`HMAC(AUTH_SECRET, password)`), not the password itself.
   - Changing either variable signs out every device.
   - The page itself is public and contains no family data. Names and history load only after login.
-- **Roles are an honor system.** Parents manage the family, mark badges and can delete any entry. Kids can log for anyone but only delete their own entries. Everyone shares the password, so a child could pick a parent's profile: this prevents accidents, not determined kids.
+- **Roles are an honor system.** Parents manage the family and prizes, mark prizes as handed out, reset wheel results and can delete any entry. Kids can log for anyone, spin the wheel for their own badges, and only delete their own entries. Everyone shares the password, so a child could pick a parent's profile: this prevents accidents, not determined kids.
 - **Defaults:** the site is set to `noindex` and can't be framed, API responses are `no-store`, failed logins are delayed, and input is validated on the server with zod.
 - **Backup:** parents can download a JSON copy of everything in **⚙️ Family → Download data backup**.
 
@@ -112,7 +114,7 @@ This is a family app, and the protection is sized for that:
 
 - **Unit tests** for the domain logic. The badge timeline is checked against the original algorithm, and route distances are pinned.
 - **Plural and formatting checks** for both languages.
-- **API tests** that call the real route handlers against an in-memory Postgres with the real migrations. They cover auth, roles, validation, idempotent saves and the last-parent guard.
+- **API tests** that call the real route handlers against an in-memory Postgres with the real migrations. They cover auth, roles, validation, idempotent saves, the last-parent guard and the wheel of fortune (earned-badge check, one draw per badge, parent reset).
 
 CI runs typecheck, lint and tests on every push.
 

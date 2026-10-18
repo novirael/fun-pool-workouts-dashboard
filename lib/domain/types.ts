@@ -17,7 +17,9 @@ export interface Member {
   swims: boolean;
   color: ColorKey;
   avatar: string;
-  defaultLengths: number;
+  /** Counter start for the small (15 m) and deep (25 m) pool, before any training in that pool. */
+  defaultLengthsSmall: number;
+  defaultLengthsDeep: number;
   /** Planned meters per month; distance badges are spaced by it. */
   monthlyPaceM: number;
   /** Bronze, silver, gold and master single-session record goals, in meters, ascending. */
@@ -44,8 +46,28 @@ export interface Award {
   givenBy: string;
 }
 
+/** A prize on the wheel of fortune; the chance of winning it is weight / sum of all weights. */
+export interface Prize {
+  id: string;
+  name: string;
+  weight: number;
+}
+
+/** The wheel result for one earned badge. One spin per badge; a parent can reset it. */
+export interface Spin {
+  memberId: string;
+  badgeId: string;
+  prizeId: string | null;
+  /** Kept even if the prize is later removed from the list. */
+  prizeName: string;
+  spunBy: string;
+  ts: number;
+}
+
 export interface FamilyState {
   members: Member[];
   sessions: Session[];
   awards: Award[];
+  prizes: Prize[];
+  spins: Spin[];
 }

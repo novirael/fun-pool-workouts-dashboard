@@ -11,7 +11,9 @@ export const members = pgTable(
     swims: boolean('swims').notNull().default(true),
     color: text('color').notNull(),
     avatar: text('avatar').notNull(),
-    defaultLengths: integer('default_lengths').notNull(),
+    // Deep (25 m) pool; the column keeps its original name.
+    defaultLengthsDeep: integer('default_lengths').notNull(),
+    defaultLengthsSmall: integer('default_lengths_small').notNull().default(30),
     monthlyPaceM: integer('monthly_pace_m').notNull(),
     recordGoalsM: integer('record_goals_m').array().notNull(),
     archived: boolean('archived').notNull().default(false),
@@ -19,7 +21,8 @@ export const members = pgTable(
   },
   (t) => [
     check('members_role_check', sql`${t.role} in ('parent', 'child')`),
-    check('members_default_lengths_check', sql`${t.defaultLengths} between 1 and 400`),
+    check('members_default_lengths_check', sql`${t.defaultLengthsDeep} between 1 and 400`),
+    check('members_default_lengths_small_check', sql`${t.defaultLengthsSmall} between 1 and 400`),
     check('members_record_goals_check', sql`cardinality(${t.recordGoalsM}) = 4`),
   ],
 );
@@ -50,6 +53,31 @@ export const badgeAwards = pgTable(
     badgeId: text('badge_id').notNull(),
     givenOn: date('given_on', { mode: 'string' }).notNull(),
     givenBy: uuid('given_by').notNull().references(() => members.id, { onDelete: 'restrict' }),
+  },
+  (t) => [primaryKey({ columns: [t.memberId, t.badgeId] })],
+);
+
+export const prizes = pgTable(
+  'prizes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    weight: integer('weight').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check('prizes_weight_check', sql`${t.weight} between 1 and 1000`)],
+);
+
+export const badgeSpins = pgTable(
+  'badge_spins',
+  {
+    memberId: uuid('member_id').notNull().references(() => members.id, { onDelete: 'restrict' }),
+    badgeId: text('badge_id').notNull(),
+    prizeId: uuid('prize_id').references(() => prizes.id, { onDelete: 'set null' }),
+    // A copy of the name, so the result survives editing or removing the prize.
+    prizeName: text('prize_name').notNull(),
+    spunBy: uuid('spun_by').notNull().references(() => members.id, { onDelete: 'restrict' }),
+    spunAt: timestamp('spun_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.memberId, t.badgeId] })],
 );

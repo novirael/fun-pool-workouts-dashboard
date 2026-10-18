@@ -7,7 +7,7 @@ import { useSaveSessions } from '@/lib/client/queries';
 import { uuid } from '@/lib/client/uuid';
 import { celebrate, type Celebration } from '@/lib/domain/celebration';
 import { todayStr } from '@/lib/domain/dates';
-import { activeSwimmers } from '@/lib/domain/members';
+import { activeSwimmers, startLengths } from '@/lib/domain/members';
 import { can } from '@/lib/domain/permissions';
 import { byDateThenTs, POOL } from '@/lib/domain/stats';
 import type { FamilyState, Member, PoolLength, Session } from '@/lib/domain/types';
@@ -48,14 +48,21 @@ export default function Main({ state, me }: { state: FamilyState; me: Member }) 
 
   const swimmers = useMemo(() => activeSwimmers(state.members), [state.members]);
   const activeMembers = useMemo(() => state.members.filter((m) => !m.archived), [state.members]);
+  // Each swimmer's latest session overall (picks the pool) and per pool (picks the lengths).
   const last = useMemo(() => {
-    const map = new Map<string, Session>();
-    for (const x of [...state.sessions].sort(byDateThenTs)) map.set(x.swimmerId, x);
-    return map;
+    const any = new Map<string, Session>(), inPool = new Map<string, Session>();
+    for (const x of [...state.sessions].sort(byDateThenTs)) {
+      any.set(x.swimmerId, x);
+      inPool.set(`${x.swimmerId}:${x.pool}`, x);
+    }
+    return { any, inPool };
   }, [state.sessions]);
 
-  const lengthsOf = (w: Member) => draft.n[w.id] ?? last.get(w.id)?.lengths ?? w.defaultLengths;
-  const poolOf = (w: Member): PoolLength => draft.pool[w.id] ?? last.get(w.id)?.pool ?? POOL;
+  const poolOf = (w: Member): PoolLength => draft.pool[w.id] ?? last.any.get(w.id)?.pool ?? POOL;
+  const lengthsOf = (w: Member) => {
+    const pool = poolOf(w);
+    return draft.n[w.id] ?? last.inPool.get(`${w.id}:${pool}`)?.lengths ?? startLengths(w, pool);
+  };
   const edit = useCallback((fn: (d: Draft) => Draft) => {
     setDraft(fn);
     setTouched(true);
@@ -135,8 +142,8 @@ export default function Main({ state, me }: { state: FamilyState; me: Member }) 
           />
         )}
         {view === 'trip' && <TripView state={state} />}
-        {view === 'family' && <FamilySettings members={state.members} me={me} onBack={() => goTab('log')} />}
-        {profile && <ProfileView key={profile.id} member={profile} state={state} me={me} today={today} />}
+        {view === 'family' && <FamilySettings members={state.members} prizes={state.prizes} me={me} onBack={() => goTab('log')} />}
+        {profile && <ProfileView key={profile.id} member={profile} state={state} me={me} today={today} onFamily={() => goTab('family')} />}
       </div>
       <TabBar
         tabs={[
@@ -147,7 +154,7 @@ export default function Main({ state, me }: { state: FamilyState; me: Member }) 
         active={view}
         onTab={goTab}
       />
-      {cele && <CelebrationView c={cele} onClose={() => setCele(null)} />}
+      {cele && <CelebrationView c={cele} hasPrizes={state.prizes.length > 0} onClose={() => setCele(null)} />}
       {picking && (
         <WhoAmI
           members={activeMembers}

@@ -4,6 +4,9 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import * as awardRoute from '@/app/api/awards/[memberId]/[badgeId]/route';
 import * as authRoute from '@/app/api/auth/route';
+import * as prizeRoute from '@/app/api/prizes/[id]/route';
+import * as prizesRoute from '@/app/api/prizes/route';
+import * as spinRoute from '@/app/api/spins/[memberId]/[badgeId]/route';
 import * as exportRoute from '@/app/api/export/route';
 import * as memberRoute from '@/app/api/members/[id]/route';
 import * as membersRoute from '@/app/api/members/route';
@@ -46,7 +49,8 @@ const person = (over: Partial<Member> = {}) => ({
   swims: true,
   color: 'orange',
   avatar: '🦦',
-  defaultLengths: 20,
+  defaultLengthsSmall: 33,
+  defaultLengthsDeep: 20,
   monthlyPaceM: 3000,
   recordGoalsM: [1000, 1250, 1500, 2000],
   ...over,
@@ -84,7 +88,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   process.env.APP_PASSWORD = PASSWORD;
-  await client.exec('truncate badge_awards, swim_sessions, members cascade');
+  await client.exec('truncate badge_spins, prizes, badge_awards, swim_sessions, members cascade');
 });
 
 describe('auth', () => {
@@ -253,5 +257,70 @@ describe('awards and export', () => {
     expect(r.body).toMatchObject({ app: 'fun-pool-workouts-dashboard', version: 1 });
     expect(r.body.members).toHaveLength(2);
     expect(r.body.sessions[0].createdBy).toBe(kid.id);
+  });
+});
+
+describe('wheel of fortune', () => {
+  /** "Kijanka" needs monthly pace × 2 = 6000 m: twelve 20 × 25 m sessions. */
+  async function earnTadpole(actor: string, swimmerId: string) {
+    const sessions = Array.from({ length: 12 }, (_, i) => ({ id: uuid(), swimmerId, date: addDays(today(), -i), lengths: 20, pool: 25 }));
+    for (const s of sessions) await call(sessionsRoute.POST, { body: { sessions: [s] }, member: actor });
+  }
+  const tadpole = (memberId: string) => ({ memberId, badgeId: 'kijanka' });
+
+  it('lets only parents manage prizes', async () => {
+    const { parent, kid } = await family();
+    expect((await call(prizesRoute.POST, { body: { name: 'Lody', weight: 5 }, member: kid.id })).body.error).toBe('forbidden');
+    const p = (await call(prizesRoute.POST, { body: { name: 'Lody 🍦', weight: 5 }, member: parent.id })).body.prize;
+    expect(p).toMatchObject({ name: 'Lody 🍦', weight: 5 });
+    expect((await call(prizesRoute.POST, { body: { name: 'X', weight: 0 }, member: parent.id })).status).toBe(400);
+    expect((await call(prizeRoute.PATCH, { body: { weight: 50 }, member: parent.id, params: { id: p.id } })).body.prize.weight).toBe(50);
+    expect((await call(prizeRoute.DELETE, { member: kid.id, params: { id: p.id } })).body.error).toBe('forbidden');
+    expect((await call(prizeRoute.DELETE, { member: parent.id, params: { id: p.id } })).status).toBe(200);
+    expect((await state()).prizes).toEqual([]);
+  });
+
+  it('asks for prizes first and only spins earned badges', async () => {
+    const { parent, kid } = await family();
+    expect((await call(spinRoute.POST, { member: kid.id, params: tadpole(kid.id) })).body.error).toBe('not_earned');
+    await earnTadpole(parent.id, kid.id);
+    expect((await call(spinRoute.POST, { member: kid.id, params: tadpole(kid.id) })).body.error).toBe('no_prizes');
+  });
+
+  it('draws once per badge, for the owner or a parent', async () => {
+    const { parent, kid } = await family();
+    const sibling: Member = (await call(membersRoute.POST, { body: person({ name: 'Ela' }), member: parent.id })).body.member;
+    await earnTadpole(parent.id, kid.id);
+    for (const [name, weight] of [['Lody', 3], ['Kino', 1]] as const) await call(prizesRoute.POST, { body: { name, weight }, member: parent.id });
+
+    expect((await call(spinRoute.POST, { member: sibling.id, params: tadpole(kid.id) })).body.error).toBe('forbidden');
+    const first = await call(spinRoute.POST, { member: kid.id, params: tadpole(kid.id) });
+    expect(first.status).toBe(201);
+    expect(['Lody', 'Kino']).toContain(first.body.spin.prizeName);
+    expect(first.body.spin.spunBy).toBe(kid.id);
+    expect(first.body.prizes).toHaveLength(2);
+
+    // Spinning again returns the same result instead of a reroll.
+    const again = await call(spinRoute.POST, { member: kid.id, params: tadpole(kid.id) });
+    expect(again.status).toBe(200);
+    expect(again.body.spin).toEqual(first.body.spin);
+
+    // Removing the prize keeps the result.
+    await call(prizeRoute.DELETE, { member: parent.id, params: { id: first.body.spin.prizeId } });
+    expect((await state()).spins[0]).toMatchObject({ prizeId: null, prizeName: first.body.spin.prizeName });
+
+    // Only a parent can reset it.
+    expect((await call(spinRoute.DELETE, { member: kid.id, params: tadpole(kid.id) })).body.error).toBe('forbidden');
+    expect((await call(spinRoute.DELETE, { member: parent.id, params: tadpole(kid.id) })).status).toBe(200);
+    expect((await state()).spins).toEqual([]);
+  });
+});
+
+describe('starting lengths', () => {
+  it('stores separate values for the small and deep pool', async () => {
+    const { parent } = await family();
+    const m: Member = (await call(membersRoute.POST, { body: person({ name: 'Ela', defaultLengthsSmall: 40, defaultLengthsDeep: 24 }), member: parent.id })).body.member;
+    expect(m).toMatchObject({ defaultLengthsSmall: 40, defaultLengthsDeep: 24 });
+    expect((await call(memberRoute.PATCH, { body: { defaultLengthsSmall: 0 }, member: parent.id, params: { id: m.id } })).status).toBe(400);
   });
 });

@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useDeleteSession, useSetAvatar, useToggleAward } from '@/lib/client/queries';
+import { useDeleteSession, useSetAvatar } from '@/lib/client/queries';
 import { AVATARS } from '@/lib/domain/avatars';
-import { BADGES, badgeDates, badgeHave, badgeNeed, type Badge } from '@/lib/domain/badges';
-import { todayStr } from '@/lib/domain/dates';
+import { BADGES, badgeDates, badgeHave, badgeNeed } from '@/lib/domain/badges';
 import { can } from '@/lib/domain/permissions';
 import { LAKES, PHASES, type PhaseId } from '@/lib/domain/places';
 import { ladder, lengthsFor, meters, SEASONS, statsFor, type Stats } from '@/lib/domain/stats';
 import type { FamilyState, Member } from '@/lib/domain/types';
-import { useI18n, type I18n } from '@/lib/i18n/context';
+import { useI18n } from '@/lib/i18n/context';
+import BadgeDialog from './BadgeDialog';
+import { badgeDesc } from './badgeText';
 import LadderPanel from './Ladder';
 import { errorText, toast } from './Toast';
 
@@ -18,32 +19,22 @@ interface Props {
   state: FamilyState;
   me: Member;
   today: string;
+  onFamily(): void;
 }
 
-export function badgeDesc(i: I18n, b: Badge, m: Member): string {
-  const n = badgeNeed(b, m), d = i.t.badges.desc;
-  switch (b.k) {
-    case 'dist': return d.dist(i.dist(n));
-    case 'best': return d.best(i.dist(n));
-    case 'count': return d.count(n);
-    case 'streak': return d.streak(n);
-    case 'seasons': return d.seasons;
-    case 'months': return d.months;
-  }
-}
-
-export default function ProfileView({ member, state, me, today }: Props) {
+export default function ProfileView({ member, state, me, today, onFamily }: Props) {
   const i18n = useI18n();
   const { t, dist, dl, date } = i18n;
   const [pickAv, setPickAv] = useState(false);
   const [armed, setArmed] = useState<string | null>(null);
   const setAvatar = useSetAvatar();
-  const toggleAward = useToggleAward();
+  const [openBadge, setOpenBadge] = useState<string | null>(null);
   const del = useDeleteSession();
 
   const s = useMemo(() => statsFor(member.id, state.sessions, today), [member.id, state.sessions, today]);
   const got = useMemo(() => badgeDates(member, s.sessions), [member, s.sessions]);
   const given = useMemo(() => new Map(state.awards.filter((a) => a.memberId === member.id).map((a) => [a.badgeId, a])), [state.awards, member.id]);
+  const spins = useMemo(() => new Map(state.spins.filter((x) => x.memberId === member.id).map((x) => [x.badgeId, x])), [state.spins, member.id]);
   const names = useMemo(() => new Map(state.members.map((m) => [m.id, m.name])), [state.members]);
 
   // A pressed "Delete" disarms itself after a moment.
@@ -215,38 +206,36 @@ export default function ProfileView({ member, state, me, today }: Props) {
                 <small>{badgeDesc(i18n, b, member)}</small>
               </div>
             );
-          const g = given.get(b.id);
-          const inner = (
-            <>
+          const g = given.get(b.id), sp = spins.get(b.id);
+          const label = g ? (sp ? t.profile.prizeGiven(sp.prizeName) : t.profile.given) : sp ? t.profile.prizeToGive(sp.prizeName) : t.profile.toGiveOne;
+          // Tapping an earned badge opens the wheel of fortune (and, for parents, "handed out").
+          return (
+            <button key={b.id} className={`bd ${g ? 'given' : 'gift'}`} onClick={() => setOpenBadge(b.id)} aria-haspopup="dialog">
               <span className="e">{b.e}</span>
               {name}
               <small>{t.profile.earnedOn(date(d, { day: 'numeric', month: 'short' }))}</small>
-              <em>{g ? t.profile.given : t.profile.toGiveOne}</em>
-            </>
-          );
-          if (!canGive)
-            return (
-              <div key={b.id} className={`bd got ${g ? 'given' : 'gift'}`}>
-                {inner}
-              </div>
-            );
-          return (
-            <button
-              key={b.id}
-              className={`bd ${g ? 'given' : 'gift'}`}
-              aria-pressed={!!g}
-              onClick={() =>
-                toggleAward.mutate(
-                  { memberId: member.id, badgeId: b.id, award: g ? null : { memberId: member.id, badgeId: b.id, givenOn: todayStr(), givenBy: me.id } },
-                  { onError: (err) => toast(errorText(t, err, t.common.saveFailed)) },
-                )
-              }
-            >
-              {inner}
+              <em>{label}</em>
             </button>
           );
         })}
       </div>
+
+      {openBadge && got[openBadge] && (
+        <BadgeDialog
+          badge={BADGES.find((b) => b.id === openBadge)!}
+          member={member}
+          me={me}
+          earnedOn={got[openBadge]!}
+          award={given.get(openBadge)}
+          spin={spins.get(openBadge)}
+          prizes={state.prizes}
+          onClose={() => setOpenBadge(null)}
+          onFamily={() => {
+            setOpenBadge(null);
+            onFamily();
+          }}
+        />
+      )}
 
       <h2>{t.profile.history}</h2>
       <ul className="hist">

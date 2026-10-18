@@ -1,6 +1,6 @@
 import { AVATARS } from './avatars';
 import { COLORS, type ColorKey } from './palette';
-import type { Member, Role } from './types';
+import type { Member, PoolLength, Role } from './types';
 
 export const LIMITS = {
   activeSwimmers: 6,
@@ -10,9 +10,16 @@ export const LIMITS = {
   lengths: 400,
   pace: [500, 50_000] as const,
   record: [50, 20_000] as const,
+  prizes: 20,
+  prizeName: 40,
+  weight: [1, 1000] as const,
 };
 
-export const DEFAULT_GOALS = { defaultLengths: 20, monthlyPaceM: 3000, recordGoalsM: [1000, 1250, 1500, 2000] };
+export const DEFAULT_GOALS = { defaultLengthsSmall: 30, defaultLengthsDeep: 20, monthlyPaceM: 3000, recordGoalsM: [1000, 1250, 1500, 2000] };
+
+/** Where the training counter starts for a swimmer who hasn't swum in this pool yet. */
+export const startLengths = (m: Pick<Member, 'defaultLengthsSmall' | 'defaultLengthsDeep'>, pool: PoolLength) =>
+  pool === 15 ? m.defaultLengthsSmall : m.defaultLengthsDeep;
 
 export type MemberDraft = Omit<Member, 'id' | 'archived'>;
 

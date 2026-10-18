@@ -1,8 +1,8 @@
 'use client';
 
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Award, FamilyState, Member, Session } from '@/lib/domain/types';
-import type { MemberInput, MemberPatch } from '@/lib/validation';
+import type { Award, FamilyState, Member, Prize, Session, Spin } from '@/lib/domain/types';
+import type { MemberInput, MemberPatch, PrizeInput } from '@/lib/validation';
 import { api, ApiError } from './api';
 
 const STATE = ['state'] as const;
@@ -97,3 +97,38 @@ export const useUpdateMember = () =>
   useMemberMutation(({ id, patch }: { id: string; patch: MemberPatch }) => api<{ member: Member }>(`/api/members/${id}`, { method: 'PATCH', body: patch }));
 
 export const useDeleteMember = () => useMemberMutation((id: string) => api(`/api/members/${id}`, { method: 'DELETE' }));
+
+export const useCreatePrize = () => useMemberMutation((input: PrizeInput) => api<{ prize: Prize }>('/api/prizes', { method: 'POST', body: input }));
+
+export const useUpdatePrize = () =>
+  useMemberMutation(({ id, patch }: { id: string; patch: Partial<PrizeInput> }) => api<{ prize: Prize }>(`/api/prizes/${id}`, { method: 'PATCH', body: patch }));
+
+export const useDeletePrize = () => useMemberMutation((id: string) => api(`/api/prizes/${id}`, { method: 'DELETE' }));
+
+export interface SpinResult {
+  spin: Spin;
+  /** The prize list the server drew from, for drawing the wheel the result lands on. */
+  prizes: Prize[];
+}
+
+/** Draws a prize on the server. The cache is updated by the caller once the wheel stops. */
+export const useSpin = () =>
+  useMutation({
+    mutationFn: ({ memberId, badgeId }: { memberId: string; badgeId: string }) => api<SpinResult>(`/api/spins/${memberId}/${badgeId}`, { method: 'POST' }),
+  });
+
+export function useStoreSpin() {
+  const qc = useQueryClient();
+  return (spin: Spin) => {
+    qc.setQueryData<FamilyState>(STATE, (s) =>
+      s && { ...s, spins: s.spins.filter((x) => !(x.memberId === spin.memberId && x.badgeId === spin.badgeId)).concat(spin) },
+    );
+    return qc.invalidateQueries({ queryKey: STATE });
+  };
+}
+
+export const useResetSpin = () =>
+  useOptimistic(
+    ({ memberId, badgeId }: { memberId: string; badgeId: string }) => api(`/api/spins/${memberId}/${badgeId}`, { method: 'DELETE' }),
+    (s, { memberId, badgeId }) => ({ ...s, spins: s.spins.filter((x) => !(x.memberId === memberId && x.badgeId === badgeId)) }),
+  );

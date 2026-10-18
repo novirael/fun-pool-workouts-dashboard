@@ -1,0 +1,461 @@
+{
+  "id": "17a63557-5e39-4a29-9301-0805b421b81a",
+  "prevId": "8278832a-d8b7-4c95-878a-c5ce8e67e47a",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.badge_awards": {
+      "name": "badge_awards",
+      "schema": "",
+      "columns": {
+        "member_id": {
+          "name": "member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "badge_id": {
+          "name": "badge_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "given_on": {
+          "name": "given_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "given_by": {
+          "name": "given_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "badge_awards_member_id_members_id_fk": {
+          "name": "badge_awards_member_id_members_id_fk",
+          "tableFrom": "badge_awards",
+          "tableTo": "members",
+          "columnsFrom": [
+            "member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "badge_awards_given_by_members_id_fk": {
+          "name": "badge_awards_given_by_members_id_fk",
+          "tableFrom": "badge_awards",
+          "tableTo": "members",
+          "columnsFrom": [
+            "given_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "badge_awards_member_id_badge_id_pk": {
+          "name": "badge_awards_member_id_badge_id_pk",
+          "columns": [
+            "member_id",
+            "badge_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.badge_spins": {
+      "name": "badge_spins",
+      "schema": "",
+      "columns": {
+        "member_id": {
+          "name": "member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "badge_id": {
+          "name": "badge_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prize_id": {
+          "name": "prize_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prize_name": {
+          "name": "prize_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "spun_by": {
+          "name": "spun_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "spun_at": {
+          "name": "spun_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "badge_spins_member_id_members_id_fk": {
+          "name": "badge_spins_member_id_members_id_fk",
+          "tableFrom": "badge_spins",
+          "tableTo": "members",
+          "columnsFrom": [
+            "member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "badge_spins_prize_id_prizes_id_fk": {
+          "name": "badge_spins_prize_id_prizes_id_fk",
+          "tableFrom": "badge_spins",
+          "tableTo": "prizes",
+          "columnsFrom": [
+            "prize_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "badge_spins_spun_by_members_id_fk": {
+          "name": "badge_spins_spun_by_members_id_fk",
+          "tableFrom": "badge_spins",
+          "tableTo": "members",
+          "columnsFrom": [
+            "spun_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "badge_spins_member_id_badge_id_pk": {
+          "name": "badge_spins_member_id_badge_id_pk",
+          "columns": [
+            "member_id",
+            "badge_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.members": {
+      "name": "members",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subtitle": {
+          "name": "subtitle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "swims": {
+          "name": "swims",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "avatar": {
+          "name": "avatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_lengths": {
+          "name": "default_lengths",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_lengths_small": {
+          "name": "default_lengths_small",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 30
+        },
+        "monthly_pace_m": {
+          "name": "monthly_pace_m",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "record_goals_m": {
+          "name": "record_goals_m",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archived": {
+          "name": "archived",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "members_role_check": {
+          "name": "members_role_check",
+          "value": "\"members\".\"role\" in ('parent', 'child')"
+        },
+        "members_default_lengths_check": {
+          "name": "members_default_lengths_check",
+          "value": "\"members\".\"default_lengths\" between 1 and 400"
+        },
+        "members_default_lengths_small_check": {
+          "name": "members_default_lengths_small_check",
+          "value": "\"members\".\"default_lengths_small\" between 1 and 400"
+        },
+        "members_record_goals_check": {
+          "name": "members_record_goals_check",
+          "value": "cardinality(\"members\".\"record_goals_m\") = 4"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.prizes": {
+      "name": "prizes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weight": {
+          "name": "weight",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "prizes_weight_check": {
+          "name": "prizes_weight_check",
+          "value": "\"prizes\".\"weight\" between 1 and 1000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.swim_sessions": {
+      "name": "swim_sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "swimmer_id": {
+          "name": "swimmer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lengths": {
+          "name": "lengths",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pool_m": {
+          "name": "pool_m",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "swim_sessions_swimmer_date_idx": {
+          "name": "swim_sessions_swimmer_date_idx",
+          "columns": [
+            {
+              "expression": "swimmer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "swim_sessions_swimmer_id_members_id_fk": {
+          "name": "swim_sessions_swimmer_id_members_id_fk",
+          "tableFrom": "swim_sessions",
+          "tableTo": "members",
+          "columnsFrom": [
+            "swimmer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "swim_sessions_created_by_members_id_fk": {
+          "name": "swim_sessions_created_by_members_id_fk",
+          "tableFrom": "swim_sessions",
+          "tableTo": "members",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "swim_sessions_lengths_check": {
+          "name": "swim_sessions_lengths_check",
+          "value": "\"swim_sessions\".\"lengths\" between 1 and 400"
+        },
+        "swim_sessions_pool_check": {
+          "name": "swim_sessions_pool_check",
+          "value": "\"swim_sessions\".\"pool_m\" in (15, 25)"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

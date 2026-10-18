@@ -8,6 +8,13 @@
       "when": 1792243870540,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792309404484,
+      "tag": "0001_prizes_and_pool_defaults",
+      "breakpoints": true
     }
   ]
 }

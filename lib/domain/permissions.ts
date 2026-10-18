@@ -9,6 +9,11 @@ export type Permission =
   | { action: 'members.manage' }
   | { action: 'export' }
   | { action: 'awards.toggle' }
+  | { action: 'prizes.manage' }
+  /** Spin the wheel for an earned badge: the badge owner or a parent. */
+  | { action: 'badge.spin'; memberId: string }
+  /** Throw away a wheel result so it can be spun again. */
+  | { action: 'badge.respin' }
   | { action: 'avatar.change'; memberId: string }
   | { action: 'session.create' }
   | { action: 'session.delete'; session: Pick<Session, 'swimmerId' | 'createdBy'> };
@@ -20,6 +25,7 @@ export function can(actor: Actor | null | undefined, p: Permission): boolean {
     case 'session.create':
       return true;
     case 'avatar.change':
+    case 'badge.spin':
       return p.memberId === actor.id;
     case 'session.delete':
       return p.session.swimmerId === actor.id || p.session.createdBy === actor.id;

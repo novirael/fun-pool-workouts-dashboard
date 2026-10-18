@@ -1,10 +1,10 @@
 import 'server-only';
 import { and, asc, count, eq, inArray, ne } from 'drizzle-orm';
 import type { ColorKey } from '@/lib/domain/palette';
-import type { Award, FamilyState, Member, PoolLength, Session } from '@/lib/domain/types';
-import type { MemberInput, MemberPatch, SessionInput } from '@/lib/validation';
+import type { Award, FamilyState, Member, PoolLength, Prize, Session, Spin } from '@/lib/domain/types';
+import type { MemberInput, MemberPatch, PrizeInput, SessionInput } from '@/lib/validation';
 import type { DB } from './db';
-import { badgeAwards, members, swimSessions } from './schema';
+import { badgeAwards, badgeSpins, members, prizes, swimSessions } from './schema';
 
 // Data access. Each write is one SQL statement (neon-http has no transactions). Guards such as
 // "keep at least one parent" read first and then write; races are irrelevant at family scale.
@@ -12,6 +12,8 @@ import { badgeAwards, members, swimSessions } from './schema';
 type MemberRow = typeof members.$inferSelect;
 type SessionRow = typeof swimSessions.$inferSelect;
 type AwardRow = typeof badgeAwards.$inferSelect;
+type PrizeRow = typeof prizes.$inferSelect;
+type SpinRow = typeof badgeSpins.$inferSelect;
 
 const toMember = (r: MemberRow): Member => ({
   id: r.id,
@@ -21,7 +23,8 @@ const toMember = (r: MemberRow): Member => ({
   swims: r.swims,
   color: r.color as ColorKey,
   avatar: r.avatar,
-  defaultLengths: r.defaultLengths,
+  defaultLengthsSmall: r.defaultLengthsSmall,
+  defaultLengthsDeep: r.defaultLengthsDeep,
   monthlyPaceM: r.monthlyPaceM,
   recordGoalsM: r.recordGoalsM,
   archived: r.archived,
@@ -39,13 +42,26 @@ const toSession = (r: SessionRow): Session => ({
 
 const toAward = (r: AwardRow): Award => ({ memberId: r.memberId, badgeId: r.badgeId, givenOn: r.givenOn, givenBy: r.givenBy });
 
+const toPrize = (r: PrizeRow): Prize => ({ id: r.id, name: r.name, weight: r.weight });
+
+const toSpin = (r: SpinRow): Spin => ({
+  memberId: r.memberId,
+  badgeId: r.badgeId,
+  prizeId: r.prizeId,
+  prizeName: r.prizeName,
+  spunBy: r.spunBy,
+  ts: r.spunAt.getTime(),
+});
+
 export async function loadState(db: DB): Promise<FamilyState> {
-  const [ms, ss, as] = await Promise.all([
+  const [ms, ss, as, ps, sp] = await Promise.all([
     db.select().from(members).orderBy(asc(members.createdAt), asc(members.id)),
     db.select().from(swimSessions).orderBy(asc(swimSessions.date), asc(swimSessions.createdAt)),
     db.select().from(badgeAwards),
+    listPrizes(db),
+    db.select().from(badgeSpins),
   ]);
-  return { members: ms.map(toMember), sessions: ss.map(toSession), awards: as.map(toAward) };
+  return { members: ms.map(toMember), sessions: ss.map(toSession), awards: as.map(toAward), prizes: ps, spins: sp.map(toSpin) };
 }
 
 export async function getMember(db: DB, id: string): Promise<Member | null> {
@@ -124,6 +140,46 @@ export async function upsertAward(db: DB, a: Award): Promise<Award> {
 
 export async function deleteAward(db: DB, memberId: string, badgeId: string): Promise<void> {
   await db.delete(badgeAwards).where(and(eq(badgeAwards.memberId, memberId), eq(badgeAwards.badgeId, badgeId)));
+}
+
+export async function sessionsOf(db: DB, swimmerId: string): Promise<Session[]> {
+  const rows = await db.select().from(swimSessions).where(eq(swimSessions.swimmerId, swimmerId));
+  return rows.map(toSession);
+}
+
+export async function listPrizes(db: DB): Promise<Prize[]> {
+  const rows = await db.select().from(prizes).orderBy(asc(prizes.createdAt), asc(prizes.id));
+  return rows.map(toPrize);
+}
+
+export async function insertPrize(db: DB, input: PrizeInput): Promise<Prize> {
+  const [r] = await db.insert(prizes).values(input).returning();
+  return toPrize(r!);
+}
+
+export async function updatePrize(db: DB, id: string, patch: Partial<PrizeInput>): Promise<Prize | null> {
+  const [r] = await db.update(prizes).set(patch).where(eq(prizes.id, id)).returning();
+  return r ? toPrize(r) : null;
+}
+
+/** Spins keep the prize name, so removing a prize never loses a result. */
+export async function deletePrize(db: DB, id: string): Promise<void> {
+  await db.delete(prizes).where(eq(prizes.id, id));
+}
+
+export async function getSpin(db: DB, memberId: string, badgeId: string): Promise<Spin | null> {
+  const [r] = await db.select().from(badgeSpins).where(and(eq(badgeSpins.memberId, memberId), eq(badgeSpins.badgeId, badgeId))).limit(1);
+  return r ? toSpin(r) : null;
+}
+
+/** Records a spin unless the badge already has one; returns the stored result either way. */
+export async function insertSpin(db: DB, s: Omit<Spin, 'ts'>): Promise<Spin> {
+  await db.insert(badgeSpins).values(s).onConflictDoNothing({ target: [badgeSpins.memberId, badgeSpins.badgeId] });
+  return (await getSpin(db, s.memberId, s.badgeId))!;
+}
+
+export async function deleteSpin(db: DB, memberId: string, badgeId: string): Promise<void> {
+  await db.delete(badgeSpins).where(and(eq(badgeSpins.memberId, memberId), eq(badgeSpins.badgeId, badgeId)));
 }
 
 /** Postgres SQLSTATE of an error from either driver (drizzle wraps driver errors in `cause`). */
